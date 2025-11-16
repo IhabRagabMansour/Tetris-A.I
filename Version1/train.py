@@ -5,8 +5,8 @@ import cProfile
 import pstats
 
 LR = 0.01
-# STATES = 6
-# HIDDEN_SIZES = [32,32,32]
+STATES = 6
+HIDDEN_SIZES = [32,32,32]
 INPUT_CHANNELS = 1  # For CNN
 ACTIONS = 1
 MAX_MEMORY = 30000
@@ -20,7 +20,7 @@ class Training_Simulation:
         self.tetris = Tetris(i=i,SLOW_DROP=SLOW_DROP)
         self.weight = genome
         # self.data = [MAX_MEMORY, STATES, HIDDEN_SIZES, ACTIONS, BATCH_SIZE, LR, EPOCHS, total_games]
-        self.data = [MAX_MEMORY, ACTIONS, BATCH_SIZE, LR, EPOCHS, total_games]
+        self.data = [MAX_MEMORY, STATES, HIDDEN_SIZES, ACTIONS, BATCH_SIZE, LR, EPOCHS, total_games]
         self.agent = Agent(self.data)
 
     def calculate_rewards(self,best_state):
