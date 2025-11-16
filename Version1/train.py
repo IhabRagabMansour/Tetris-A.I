@@ -134,15 +134,11 @@ class Training_Simulation:
             score += tetris.game.score
             agent.calculate_lr(tetris.games)
 
-            # Print progress every 100 games
-            if game_number % 100 == 0:
-                print(f'Game {game_number}/{n} | LR={agent.LR:.4f} | Epsilon={agent.epsilon:.5f} | Avg Lines={lines/game_number:.2f}')
+            # print(f'LR={agent.LR:.4f} |  Epsilon={agent.epsilon:.5f} at game={game_number}')
 
-            # Save model every 500 games
-            if tetris.games % 500 == 0:
+            if tetris.games%500==0:
                 count += 1
                 agent.save_model(count)
-                print(f'Model saved at game {tetris.games} (checkpoint {count})')
 
         return tetris.scoreboard.hiscore, lines, tetris_clears
 

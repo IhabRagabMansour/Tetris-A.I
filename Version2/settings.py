@@ -24,9 +24,7 @@ from numba import njit
 from numba.typed import Dict
 from numba import types
 
-# Set to False for faster headless training (no GUI)
-# Set to True to watch the game with visual feedback
-RENDER = False
+RENDER = True
 HARD_DROP = False
 SCORE_BOARD_ON = False
 FPS = 0
