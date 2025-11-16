@@ -88,8 +88,6 @@ class Training_Simulation:
         score = lines = not_trained = 0
         tetris_clears = 0
         for game_number in range(1,n+1):
-            if game_number==500:
-                return
             tetris.reset()
             done = trained = False
             old_state = tetris.game.get_state()
