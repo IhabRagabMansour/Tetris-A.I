@@ -4,7 +4,9 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 import pygame
 
 
-RENDER = True
+# Set to False for faster headless training (no GUI)
+# Set to True to watch the game with visual feedback
+RENDER = False
 HARD_DROP_ON = True
 FRAMERATES = 0
 
