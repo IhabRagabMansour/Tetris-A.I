@@ -5,8 +5,9 @@ import cProfile
 import pstats
 
 LR = 0.01
-STATES = 6
-HIDDEN_SIZES = [32,32,32]
+# STATES = 6
+# HIDDEN_SIZES = [32,32,32]
+INPUT_CHANNELS = 1  # For CNN
 ACTIONS = 1
 MAX_MEMORY = 30000
 BATCH_SIZE = 128
@@ -18,7 +19,8 @@ class Training_Simulation:
         self.i = i
         self.tetris = Tetris(i=i,SLOW_DROP=SLOW_DROP)
         self.weight = genome
-        self.data = [MAX_MEMORY, STATES, HIDDEN_SIZES, ACTIONS, BATCH_SIZE, LR, EPOCHS, total_games]
+        # self.data = [MAX_MEMORY, STATES, HIDDEN_SIZES, ACTIONS, BATCH_SIZE, LR, EPOCHS, total_games]
+        self.data = [MAX_MEMORY, ACTIONS, BATCH_SIZE, LR, EPOCHS, total_games]
         self.agent = Agent(self.data)
 
     def calculate_rewards(self,best_state):
@@ -98,11 +100,17 @@ class Training_Simulation:
                 if not next_states:
                     break
 
-                best_state = agent.get_action(next_states.keys())
-                lines += best_state[2]
-                if best_state[2]==4:
-                    tetris_clears += 1
-                best_action = next_states[best_state]
+                # best_state = agent.get_action(next_states.keys())
+                # lines += best_state[2]
+                # if best_state[2]==4:
+                #     tetris_clears += 1
+                # best_action = next_states[best_state]
+                states_list, actions_list = tetris.game.calc_all_states()
+                if not states_list:
+                    break
+                best_idx = agent.get_action(states_list)
+                best_state = states_list[best_idx]
+                best_action = actions_list[best_idx]
 
                 confidence = agent.q_values[-1] if agent.q_values else 0
                 tetris.update_state(best_state, confidence, agent.random, agent.epsilon)
@@ -135,6 +143,9 @@ class Training_Simulation:
             agent.calculate_lr(tetris.games)
 
             # print(f'LR={agent.LR:.4f} |  Epsilon={agent.epsilon:.5f} at game={game_number}')
+
+            if game_number % 100 == 0:
+                print(f'Game {game_number}/{n} | LR={agent.LR:.4f} | Epsilon={agent.epsilon:.5f} | Avg Lines={lines/game_number:.2f}')
 
             if tetris.games%500==0:
                 count += 1

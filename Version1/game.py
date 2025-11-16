@@ -200,6 +200,40 @@ class Game:
     def move_down(self):
         self.tetromino.move_down(self.board)
 
+    # def calc_all_states(self):
+    #     piece = self.tetromino
+    #     states = {}
+    #     for r in range(TETROMINOS[piece.shape]['rotations']):
+    #         # figure out the farthest left/right the pivot can be
+    #         mn = int(min(block.pos.x for block in piece.blocks))
+    #         piv_x = mn
+    #         left_bound = piv_x - mn
+    #         right_bound = piv_x + 10 - int(max(block.pos.x for block in piece.blocks))
+
+    #         for x in range(left_bound, right_bound):
+    #             # adjust piece to new pivot
+    #             if not piece.move_to_x(x):
+    #                 continue
+    #             board = self._create_fake_board()
+    #             # hard drop and record board
+    #             piece.hard_drop(board,False)
+
+    #             # update if all pieces are valid
+    #             if all(0<=block.pos.y<ROWS for block in piece.blocks):
+    #                 full_rows = board[np.all(board > 0, axis=1)]
+    #                 board, lines_removed = self._delete_lines(board, full_rows)
+    #                 x_pivot = min(block.pos.x for block in piece.blocks)
+    #                 states[(x_pivot,r)] = self.get_state(board,lines_removed)
+
+    #             # after dropping, move back up
+    #             piece.move_to_y(0)
+
+    #         # after placing all, move back to middle and rotate
+    #         piece.move_to_x(4)
+    #         piece.rotate()
+
+    #     return states
+
     def calc_all_states(self):
         piece = self.tetromino
         states = {}
@@ -223,7 +257,13 @@ class Game:
                     full_rows = board[np.all(board > 0, axis=1)]
                     board, lines_removed = self._delete_lines(board, full_rows)
                     x_pivot = min(block.pos.x for block in piece.blocks)
-                    states[(x_pivot,r)] = self.get_state(board,lines_removed)
+                    states_list = []
+                    actions_list = []
+
+                    # Inside your loop where you calculate each placement:
+                    board_state = np.array(board, dtype=np.float32)
+                    states_list.append(board_state)
+                    actions_list.append((x_pivot, r))
 
                 # after dropping, move back up
                 piece.move_to_y(0)
@@ -232,20 +272,27 @@ class Game:
             piece.move_to_x(4)
             piece.rotate()
 
-        return states
+        return states_list, actions_list
+
+    # def get_state(self, board=None, lines_removed=0):
+    #     if board is None:
+    #         board = self.board
+
+    #     y_pos = max(block.pos.y for block in self.tetromino.blocks)
+    #     cols, total_heights, bumpiness = get_states_fast(board)
+    #     pillar = any(cols[i-1]-cols[i]>=3 and cols[i+1]-cols[i]>=3 for i in range(1, len(cols)-1)) or cols[1]-cols[0]>=3 or cols[-2]-cols[-1]>=3
+    #     holes = np.sum((board == 0) & (np.cumsum(board != 0, axis=0) > 0))
+
+    #     state = [total_heights, bumpiness, lines_removed, holes, y_pos, pillar]
+
+    #     return state
 
     def get_state(self, board=None, lines_removed=0):
         if board is None:
             board = self.board
-
-        y_pos = max(block.pos.y for block in self.tetromino.blocks)
-        cols, total_heights, bumpiness = get_states_fast(board)
-        pillar = any(cols[i-1]-cols[i]>=3 and cols[i+1]-cols[i]>=3 for i in range(1, len(cols)-1)) or cols[1]-cols[0]>=3 or cols[-2]-cols[-1]>=3
-        holes = np.sum((board == 0) & (np.cumsum(board != 0, axis=0) > 0))
-
-        state = [total_heights, bumpiness, lines_removed, holes, y_pos, pillar]
-
-        return state
+        
+        # Return raw board as numpy array
+        return np.array(board, dtype=np.float32)  # Shape: (20, 10)
 
     def run(self):
         self.reset_turn_info()

@@ -5,20 +5,42 @@ import torch.nn.functional as f
 import os
 
 
-class Linear_QNet(nn.Module):
-    def __init__(self, input_size, hidden_sizes, output_size):
-        super().__init__()
-        self.layer1 = nn.Linear(input_size, hidden_sizes[0])
-        self.layer2 = nn.Linear(hidden_sizes[0], hidden_sizes[1])
-        self.layer3 = nn.Linear(hidden_sizes[1], hidden_sizes[2])
-        self.output_layer = nn.Linear(hidden_sizes[2], output_size)
+# class Linear_QNet(nn.Module):
+#     def __init__(self, input_size, hidden_sizes, output_size):
+#         super().__init__()
+#         self.layer1 = nn.Linear(input_size, hidden_sizes[0])
+#         self.layer2 = nn.Linear(hidden_sizes[0], hidden_sizes[1])
+#         self.layer3 = nn.Linear(hidden_sizes[1], hidden_sizes[2])
+#         self.output_layer = nn.Linear(hidden_sizes[2], output_size)
 
+#     def forward(self, x):
+#         x = f.relu(self.layer1(x))
+#         x = f.relu(self.layer2(x))
+#         x = f.relu(self.layer3(x))
+#         x = self.output_layer(x)
+#         return x
+
+class CNN_QNet(nn.Module):
+    def __init__(self, output_size=1, input_channels=1):
+        super().__init__()
+        self.conv1 = nn.Conv2d(input_channels, 32, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
+        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, padding=1)
+        
+        # After conv layers: 64 channels * 20 rows * 10 cols
+        self.fc1 = nn.Linear(64 * 20 * 10, 256)
+        self.fc2 = nn.Linear(256, 128)
+        self.output_layer = nn.Linear(128, output_size)
+    
     def forward(self, x):
-        x = f.relu(self.layer1(x))
-        x = f.relu(self.layer2(x))
-        x = f.relu(self.layer3(x))
-        x = self.output_layer(x)
-        return x
+        # Input x shape: (batch, 1, 20, 10)
+        x = f.relu(self.conv1(x))
+        x = f.relu(self.conv2(x))
+        x = f.relu(self.conv3(x))
+        x = x.view(x.size(0), -1)  # Flatten
+        x = f.relu(self.fc1(x))
+        x = f.relu(self.fc2(x))
+        return self.output_layer(x)
 
 class QTrainer:
     def __init__(self, model1, model2, lr, gamma, memory, EPOCH, BATCH_SIZE):
@@ -60,8 +82,14 @@ class QTrainer:
         states, next_states, rewards, dones = zip(*batch)
 
         # Convert to tensors for batch processing
-        state_batch = torch.tensor(states, dtype=torch.float32)
-        next_state_batch = torch.tensor(next_states, dtype=torch.float32)
+        # state_batch = torch.tensor(states, dtype=torch.float32)
+        # next_state_batch = torch.tensor(next_states, dtype=torch.float32)
+
+        # Add channel dimension for CNN
+        state_batch = torch.tensor(states, dtype=torch.float32).unsqueeze(1)
+        # Shape: (batch, 1, 20, 10)
+        next_state_batch = torch.tensor(next_states, dtype=torch.float32).unsqueeze(1)
+
         reward_batch = torch.tensor(rewards, dtype=torch.float32).view(-1, 1)
         done_batch = torch.tensor(dones, dtype=torch.bool)
 

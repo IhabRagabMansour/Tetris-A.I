@@ -1,6 +1,7 @@
 import random
 from prioritized_memory import PrioritizedMemory
-from model import QTrainer, Linear_QNet
+# from model import QTrainer, Linear_QNet
+from model import QTrainer, CNN_QNet  
 import numpy as np
 import torch
 import os
@@ -20,8 +21,10 @@ class Agent:
         self.gamma = 0.999 # discount rate
         self.memory = PrioritizedMemory(self.MAX_MEMORY)
 
-        self.model1 = Linear_QNet(self.STATES,self.HIDDEN_AMOUNT,self.ACTIONS) # primary network, evaluates best action
-        self.model2 = Linear_QNet(self.STATES,self.HIDDEN_AMOUNT,self.ACTIONS) # target network,  evaluates best action's q value
+        # self.model1 = Linear_QNet(self.STATES,self.HIDDEN_AMOUNT,self.ACTIONS) # primary network, evaluates best action
+        # self.model2 = Linear_QNet(self.STATES,self.HIDDEN_AMOUNT,self.ACTIONS) # target network,  evaluates best action's q value
+        self.model1 = CNN_QNet(output_size=self.ACTIONS)
+        self.model2 = CNN_QNet(output_size=self.ACTIONS)
         self.trainer = QTrainer(self.model1, self.model2, lr=self.LR, gamma=self.gamma, memory=self.memory,EPOCH=self.EPOCH,BATCH_SIZE=self.BATCH_SIZE)
 
         self.model_path = "model/best_model.pth"
@@ -104,8 +107,14 @@ class Agent:
 
     def remember(self, state, next_state, reward, finished):
         # Get the Q-value for the current state from the primary model (for the action taken)
-        state_tensor = torch.tensor(state, dtype=torch.float32)
-        next_state_tensor = torch.tensor(next_state, dtype=torch.float32)
+        
+        # state_tensor = torch.tensor(state, dtype=torch.float32)
+        # next_state_tensor = torch.tensor(next_state, dtype=torch.float32)
+
+        # Add channel dimension for CNN
+        state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
+        # Shape: (1, 1, 20, 10)
+        next_state_tensor = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
         current_q_value = self.model1(state_tensor)
 
         # For non-terminal states, calculate the target Q-value:
@@ -132,28 +141,51 @@ class Agent:
     def update_target_network(self):
         self.model2.load_state_dict(self.model1.state_dict())
 
+    # def get_action(self, states):
+    #     self.total_steps += 1
+    #     if self.total_steps%1000==0:
+    #         self.update_target_network()
+    #     # Exploration vs exploitation
+    #     if random.random() < self.epsilon:
+    #         self.random = True
+    #         return random.choice(list(states))
+    #     else:
+    #         self.random = False
+
+    #     # Convert the dictionary keys (tuples) into a numpy array of floats
+    #     state_values = np.array([list(state) for state in states], dtype=np.float32)
+
+    #     # Convert the numpy array into a PyTorch tensor (only once)
+    #     state_tensors = torch.from_numpy(state_values)
+
+    #     with torch.no_grad():
+    #         q_values = self.model1(state_tensors)
+
+    #     self.q_values += [torch.max(q_values).item()]
+    #     # Choose the state with the highest Q-value
+    #     best_idx = torch.argmax(q_values).item()
+    #     return list(states)[best_idx]
+    
     def get_action(self, states):
         self.total_steps += 1
-        if self.total_steps%1000==0:
+        if self.total_steps % 1000 == 0:
             self.update_target_network()
-        # Exploration vs exploitation
+        
         if random.random() < self.epsilon:
             self.random = True
             return random.choice(list(states))
         else:
             self.random = False
-
-        # Convert the dictionary keys (tuples) into a numpy array of floats
-        state_values = np.array([list(state) for state in states], dtype=np.float32)
-
-        # Convert the numpy array into a PyTorch tensor (only once)
-        state_tensors = torch.from_numpy(state_values)
-
+        
+        # Convert board states to tensor with shape (batch, 1, 20, 10)
+        state_boards = np.array(states, dtype=np.float32)
+        # Add channel dimension: (batch, 20, 10) -> (batch, 1, 20, 10)
+        state_boards = state_boards[:, np.newaxis, :, :]
+        state_tensors = torch.from_numpy(state_boards)
+        
         with torch.no_grad():
             q_values = self.model1(state_tensors)
-
+        
         self.q_values += [torch.max(q_values).item()]
-        # Choose the state with the highest Q-value
         best_idx = torch.argmax(q_values).item()
         return list(states)[best_idx]
-
