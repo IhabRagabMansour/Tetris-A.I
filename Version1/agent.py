@@ -57,13 +57,13 @@ class Agent:
         else:
             print("No saved model found. Using a new model.")
 
-    def save_model(self):
+    def save_model(self, count):
         os.makedirs("model", exist_ok=True)  # Ensure directory exists
         checkpoint = {
             'model_state_dict': self.model1.state_dict(),
             'optimizer_state_dict': self.trainer.optimizer1.state_dict()
         }
-        torch.save(checkpoint, "model/best_model.pth")
+        torch.save(checkpoint, f"model/trained_model_{count}.pth")
         print("Model and optimizer saved successfully!")
 
     def calculate_lr(self, games_played: int, max_games: int = 500, min_lr: float = 0.001, max_lr: float = 0.01):

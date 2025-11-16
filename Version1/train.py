@@ -87,6 +87,7 @@ class Training_Simulation:
         agent = self.agent
         score = lines = not_trained = 0
         tetris_clears = 0
+        count = 0
         for game_number in range(1,n+1):
             tetris.reset()
             done = trained = False
@@ -135,8 +136,9 @@ class Training_Simulation:
 
             # print(f'LR={agent.LR:.4f} |  Epsilon={agent.epsilon:.5f} at game={game_number}')
 
-            # if tetris.games%500==0:
-            #     agent.save_model()
+            if tetris.games%500==0:
+                count += 1
+                agent.save_model(count)
 
         return tetris.scoreboard.hiscore, lines, tetris_clears
 
