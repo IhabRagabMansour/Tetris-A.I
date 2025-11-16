@@ -130,8 +130,8 @@ class Training_Simulation:
                 if not states_list:
                     break
 
-                best_idx = agent.get_action(states_list)
-                best_state = states_list[best_idx]
+                best_state = agent.get_action(states_list)  # Now expecting the state directly
+                best_idx = states_list.index(best_state)  # Find its index
                 best_action = actions_list[best_idx]
 
                 confidence = agent.q_values[-1] if agent.q_values else 0
@@ -145,7 +145,11 @@ class Training_Simulation:
                 if lines_removed == 4:
                     tetris_clears += 1
 
-                reward += self.calculate_rewards(best_state)
+                # reward += self.calculate_rewards(best_state)
+                # tetris.update_rewards(reward)
+
+                features = tetris.game.get_features_from_board(best_state, lines_removed)
+                reward += self.calculate_rewards(features)
                 tetris.update_rewards(reward)
 
                 agent.remember(old_state, best_state, reward, done)
