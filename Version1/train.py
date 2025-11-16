@@ -95,19 +95,41 @@ class Training_Simulation:
             done = trained = False
             old_state = tetris.game.get_state()
 
-            while not done:
-                next_states = {tuple(v): k for k, v in tetris.game.calc_all_states().items()}
-                if not next_states:
-                    break
+            # while not done:
+            #     next_states = {tuple(v): k for k, v in tetris.game.calc_all_states().items()}
+            #     if not next_states:
+            #         break
+            #     best_state = agent.get_action(next_states.keys())
+            #     lines += best_state[2]
+            #     if best_state[2]==4:
+            #         tetris_clears += 1
+            #     best_action = next_states[best_state]
+            #     # states_list, actions_list = tetris.game.calc_all_states()
+            #     # if not states_list:
+            #     #     break
+            #     # best_idx = agent.get_action(states_list)
+            #     # best_state = states_list[best_idx]
+            #     # best_action = actions_list[best_idx]
 
-                # best_state = agent.get_action(next_states.keys())
-                # lines += best_state[2]
-                # if best_state[2]==4:
-                #     tetris_clears += 1
-                # best_action = next_states[best_state]
+            #     confidence = agent.q_values[-1] if agent.q_values else 0
+            #     tetris.update_state(best_state, confidence, agent.random, agent.epsilon)
+
+            #     reward, done = tetris.play_full(best_action)
+
+            #     reward += self.calculate_rewards(best_state)
+            #     tetris.update_rewards(reward)
+
+            #     agent.remember(old_state, best_state, reward, done)
+            #     old_state = best_state
+
+            #     if agent.total_steps % 200 == 0:
+            #         agent.train_long_memory()
+            #         trained = True
+            while not done:
                 states_list, actions_list = tetris.game.calc_all_states()
                 if not states_list:
                     break
+
                 best_idx = agent.get_action(states_list)
                 best_state = states_list[best_idx]
                 best_action = actions_list[best_idx]
@@ -116,6 +138,12 @@ class Training_Simulation:
                 tetris.update_state(best_state, confidence, agent.random, agent.epsilon)
 
                 reward, done = tetris.play_full(best_action)
+                
+                # Track lines after playing
+                lines_removed = tetris.game.lines_removed
+                lines += lines_removed
+                if lines_removed == 4:
+                    tetris_clears += 1
 
                 reward += self.calculate_rewards(best_state)
                 tetris.update_rewards(reward)
