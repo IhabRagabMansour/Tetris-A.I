@@ -9,6 +9,8 @@ import os
 
 class Agent:
     def __init__(self, data):
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        print(f"Using device: {self.device}")
         self.MAX_MEMORY = data[0]
         self.STATES = data[1]
         self.HIDDEN_AMOUNT = data[2]
@@ -25,9 +27,13 @@ class Agent:
         # self.model2 = Linear_QNet(self.STATES,self.HIDDEN_AMOUNT,self.ACTIONS) # target network,  evaluates best action's q value
         self.model1 = CNN_QNet(output_size=self.ACTIONS)
         self.model2 = CNN_QNet(output_size=self.ACTIONS)
+
+        self.model1.to(self.device)
+        self.model2.to(self.device)
+
         self.trainer = QTrainer(self.model1, self.model2, lr=self.LR, gamma=self.gamma, memory=self.memory,EPOCH=self.EPOCH,BATCH_SIZE=self.BATCH_SIZE)
 
-        self.model_path = "model/best_model.pth"
+        self.model_path = "model/trained_model_16.pth"
         self.load_model(self.model_path)
 
 
@@ -47,7 +53,7 @@ class Agent:
 
     def load_model(self, model_path):
         if os.path.isfile(model_path):
-            checkpoint = torch.load(model_path)
+            checkpoint = torch.load(model_path, map_location=self.device)
 
             # Load model weights
             self.model1.load_state_dict(checkpoint['model_state_dict'])
@@ -61,12 +67,13 @@ class Agent:
             print("No saved model found. Using a new model.")
 
     def save_model(self, count):
-        os.makedirs("model", exist_ok=True)  # Ensure directory exists
+        os.makedirs("model", exist_ok=True)
         checkpoint = {
-            'model_state_dict': self.model1.state_dict(),
+            'model_state_dict': self.model1.cpu().state_dict(),  # Move to CPU before saving
             'optimizer_state_dict': self.trainer.optimizer1.state_dict()
         }
         torch.save(checkpoint, f"model/trained_model_{count}.pth")
+        self.model1.to(self.device)  # Move back to GPU
         print("Model and optimizer saved successfully!")
 
     def calculate_lr(self, games_played: int, max_games: int = 500, min_lr: float = 0.001, max_lr: float = 0.01):
@@ -112,20 +119,28 @@ class Agent:
         # next_state_tensor = torch.tensor(next_state, dtype=torch.float32)
 
         # Add channel dimension for CNN
-        state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
+        state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(self.device)
         # Shape: (1, 1, 20, 10)
-        next_state_tensor = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
-        current_q_value = self.model1(state_tensor)
+        next_state_tensor = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(self.device)
+        # current_q_value = self.model1(state_tensor)
+        current_q_value = self.model1(state_tensor).squeeze().item()
 
-        # For non-terminal states, calculate the target Q-value:
-        if not finished:
-            # Use the target network to estimate the Q-value for the next state (using max_a Q(s', a))
-            next_q_value = torch.max(self.model2(next_state_tensor)).item()
-            # The target is the immediate reward plus the discounted value of the next state
-            target_q_value = reward + self.gamma * next_q_value
-        else:
-            # If the game ends (terminal state), just use the reward
-            target_q_value = reward
+        # # For non-terminal states, calculate the target Q-value:
+        # if not finished:
+        #     # Use the target network to estimate the Q-value for the next state (using max_a Q(s', a))
+        #     next_q_value = torch.max(self.model2(next_state_tensor)).item()
+        #     # The target is the immediate reward plus the discounted value of the next state
+        #     target_q_value = reward + self.gamma * next_q_value
+        # else:
+        #     # If the game ends (terminal state), just use the reward
+        #     target_q_value = reward
+
+        with torch.no_grad():
+            if not finished:
+                next_q_value = self.model2(next_state_tensor).max().item()
+                target_q_value = reward + self.gamma * next_q_value
+            else:
+                target_q_value = reward
 
         # Calculate the TD error (difference between target and current Q-value)
         td_error = abs(target_q_value - current_q_value)
@@ -173,7 +188,7 @@ class Agent:
         
         if random.random() < self.epsilon:
             self.random = True
-            return random.choice(list(states))
+            return random.randint(0, len(states) - 1)
         else:
             self.random = False
         
@@ -181,11 +196,11 @@ class Agent:
         state_boards = np.array(states, dtype=np.float32)
         # Add channel dimension: (batch, 20, 10) -> (batch, 1, 20, 10)
         state_boards = state_boards[:, np.newaxis, :, :]
-        state_tensors = torch.from_numpy(state_boards)
+        state_tensors = torch.from_numpy(state_boards).to(self.device)
         
         with torch.no_grad():
             q_values = self.model1(state_tensors)
         
         self.q_values += [torch.max(q_values).item()]
         best_idx = torch.argmax(q_values).item()
-        return list(states)[best_idx]
+        return best_idx  

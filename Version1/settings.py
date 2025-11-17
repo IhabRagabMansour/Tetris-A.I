@@ -4,7 +4,7 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 import pygame
 
 
-RENDER = False
+RENDER = True
 HARD_DROP_ON = True
 FRAMERATES = 0
 

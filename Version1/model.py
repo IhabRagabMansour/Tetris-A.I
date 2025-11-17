@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as f
+import numpy as np
 import os
 
 
@@ -61,8 +62,13 @@ class QTrainer:
             param_group['lr'] = new_lr
 
     def fit(self, x, y):
+        device = next(self.model1.parameters()).device
+
         x_train = torch.tensor(x, dtype=torch.float32) if not isinstance(x, torch.Tensor) else x
         y_train = torch.tensor(y, dtype=torch.float32).view(-1, 1) if not isinstance(y, torch.Tensor) else y
+
+        x_train = x_train.to(device)
+        y_train = y_train.to(device)
 
         self.optimizer1.zero_grad()
         outputs = self.model1(x_train)
@@ -85,13 +91,15 @@ class QTrainer:
         # state_batch = torch.tensor(states, dtype=torch.float32)
         # next_state_batch = torch.tensor(next_states, dtype=torch.float32)
 
-        # Add channel dimension for CNN
-        state_batch = torch.tensor(states, dtype=torch.float32).unsqueeze(1)
-        # Shape: (batch, 1, 20, 10)
-        next_state_batch = torch.tensor(next_states, dtype=torch.float32).unsqueeze(1)
+        device = next(self.model1.parameters()).device
 
-        reward_batch = torch.tensor(rewards, dtype=torch.float32).view(-1, 1)
-        done_batch = torch.tensor(dones, dtype=torch.bool)
+        # Add channel dimension for CNN
+        state_batch = torch.tensor(np.array(states), dtype=torch.float32).unsqueeze(1).to(device)
+        # Shape: (batch, 1, 20, 10)
+        next_state_batch = torch.tensor(np.array(next_states), dtype=torch.float32).unsqueeze(1).to(device)
+
+        reward_batch = torch.tensor(np.array(rewards), dtype=torch.float32).view(-1, 1).to(device)
+        done_batch = torch.tensor(np.array(dones), dtype=torch.bool).to(device)
 
         # Predict Q-values
         current_q_values = self.model1(state_batch)
