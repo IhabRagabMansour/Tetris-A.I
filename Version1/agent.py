@@ -89,26 +89,16 @@ class Agent:
         self.q_values = []
 
     def decay_epsilon(self, game_number, max_games=500):
-        # Reduced reset strategy: first cycle full exploration, later cycles limited exploration
-        current_phase = (game_number // 1000)  # Phase switches at 1000, 2000, etc.
-        phase_start = current_phase * 1000 # Start of current phase (0, 1000, 2000, etc.)
+        # Single decay for first 500 games, then stay at minimum forever
+        # NO RESETS to prevent catastrophic forgetting
 
-        if game_number == phase_start:
-            # Reduce reset magnitude after first cycle to prevent catastrophic forgetting
-            if current_phase == 0:
-                self.epsilon = 0.3  # First cycle: full exploration
-            else:
-                self.epsilon = 0.05  # Later cycles: minimal exploration only
-
-        # Apply decay within each phase
-        if (game_number - phase_start) <= max_games:
-            if current_phase == 0:
-                # First cycle: decay from 0.3 to 0.0001
-                epsilon_t = self.min_num + (0.3 - self.min_num) * (1 - ((game_number-phase_start) / max_games)) ** self.alpha
-            else:
-                # Later cycles: decay from 0.05 to 0.0001
-                epsilon_t = self.min_num + (0.05 - self.min_num) * (1 - ((game_number-phase_start) / max_games)) ** self.alpha
-            self.epsilon = max(0.0001, epsilon_t)
+        if game_number <= max_games:
+            # First 500 games: decay from 0.3 to 0.0001
+            epsilon_t = self.min_num + (self.epsilon_0 - self.min_num) * (1 - (game_number / max_games)) ** self.alpha
+            self.epsilon = max(self.min_num, epsilon_t)
+        else:
+            # After game 500: stay at minimum (pure exploitation)
+            self.epsilon = self.min_num
 
     def remember(self, state, next_state, reward, finished):
         # Get the Q-value for the current state from the primary model (for the action taken)
