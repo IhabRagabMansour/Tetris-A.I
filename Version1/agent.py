@@ -33,7 +33,7 @@ class Agent:
 
         self.trainer = QTrainer(self.model1, self.model2, lr=self.LR, gamma=self.gamma, memory=self.memory,EPOCH=self.EPOCH,BATCH_SIZE=self.BATCH_SIZE)
 
-        self.model_path = "model/trained_model_16.pth"
+        self.model_path = "model/trained_model_20.pth"
         self.load_model(self.model_path)
 
 

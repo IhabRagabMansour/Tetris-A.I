@@ -182,9 +182,10 @@ class Training_Simulation:
                 count += 1
                 agent.save_model(count)
 
-        return tetris.scoreboard.hiscore, lines, tetris_clears
+        # return tetris.scoreboard.hiscore, lines, tetris_clears
+        return lines, tetris_clears
 
-def run_game(SLOW_DROP=True):
+def run_game(SLOW_DROP=True, games=10000):
     genome = {
         'game_over': 189.27613725914273,
         'survival_instinct': 8.388926084018738,
@@ -196,7 +197,7 @@ def run_game(SLOW_DROP=True):
         'y_pos_reward': 207.81525814829266,
         'y_pos_punish': 117.90325502640637
     }
-    n = 10000
+    n = games
     print(f'Running simulation SLOW_DROP={SLOW_DROP}')
     t = Training_Simulation(genome, 1, False,n,SLOW_DROP)
     t.run_simulation(n)
