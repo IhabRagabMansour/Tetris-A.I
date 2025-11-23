@@ -313,7 +313,7 @@ class Game:
 
         # Use max column height as y_pos (don't use self.tetromino as it's the wrong piece)
         # Higher y_pos means pieces are placed higher on the board
-        y_pos = max(cols) if cols else 0
+        y_pos = max(cols) if len(cols) > 0 else 0
 
         pillar = any(cols[i-1]-cols[i]>=3 and cols[i+1]-cols[i]>=3
                     for i in range(1, len(cols)-1)) or cols[1]-cols[0]>=3 or cols[-2]-cols[-1]>=3
