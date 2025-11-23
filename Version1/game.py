@@ -308,12 +308,17 @@ class Game:
 
     def get_features_from_board(self, board, lines_removed=0):
         """Extract features from a board state for reward calculation"""
-        y_pos = max(block.pos.y for block in self.tetromino.blocks)
+        # Calculate features from the board state
         cols, total_heights, bumpiness = get_states_fast(board)
-        pillar = any(cols[i-1]-cols[i]>=3 and cols[i+1]-cols[i]>=3 
+
+        # Use max column height as y_pos (don't use self.tetromino as it's the wrong piece)
+        # Higher y_pos means pieces are placed higher on the board
+        y_pos = max(cols) if cols else 0
+
+        pillar = any(cols[i-1]-cols[i]>=3 and cols[i+1]-cols[i]>=3
                     for i in range(1, len(cols)-1)) or cols[1]-cols[0]>=3 or cols[-2]-cols[-1]>=3
         holes = np.sum((board == 0) & (np.cumsum(board != 0, axis=0) > 0))
-        
+
         return [total_heights, bumpiness, lines_removed, holes, y_pos, pillar]
 
 class Tetromino:

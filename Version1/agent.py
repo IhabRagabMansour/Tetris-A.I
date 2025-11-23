@@ -76,18 +76,10 @@ class Agent:
         self.model1.to(self.device)  # Move back to GPU
         print("Model and optimizer saved successfully!")
 
-    def calculate_lr(self, games_played: int, max_games: int = 500, min_lr: float = 0.001, max_lr: float = 0.01):
-        # # Ensure the learning rate doesn't drop below the minimum
-        # lr = max_lr - (max_lr - min_lr) * (games_played / max_games)
-        # lr = max(lr, min_lr)
-        # self.LR = lr
-        # self.trainer.update_lr(lr)
-
-        # # Compute learning rate decay
-        current_phase = (games_played // 1000)  # Determines if we're in phase 1, 3, etc.
-        phase_start = (current_phase * 1000)   # Start of the phase (0, 1000, etc.)
-
-        lr = max_lr - (max_lr - min_lr) * ((games_played - phase_start) / max_games)
+    def calculate_lr(self, games_played: int, max_games: int = 10000, min_lr: float = 0.001, max_lr: float = 0.01):
+        # Single smooth decay across entire training (no resets)
+        # LR decays from 0.01 to 0.001 over max_games
+        lr = max_lr - (max_lr - min_lr) * (games_played / max_games)
         lr = max(lr, min_lr)
         self.LR = lr
         self.trainer.update_lr(lr)
@@ -97,19 +89,25 @@ class Agent:
         self.q_values = []
 
     def decay_epsilon(self, game_number, max_games=500):
-        # epsilon_t = self.min_num + (self.epsilon_0 - self.min_num) * (1 - (game_number / self.total_games)) ** self.alpha
-        # self.epsilon = max(0.0001, epsilon_t)
-
-        # Determine which phase we are in
+        # Reduced reset strategy: first cycle full exploration, later cycles limited exploration
         current_phase = (game_number // 1000)  # Phase switches at 1000, 2000, etc.
         phase_start = current_phase * 1000 # Start of current phase (0, 1000, 2000, etc.)
 
         if game_number == phase_start:
-            self.epsilon = self.epsilon_0  # Reset to initial value
+            # Reduce reset magnitude after first cycle to prevent catastrophic forgetting
+            if current_phase == 0:
+                self.epsilon = 0.3  # First cycle: full exploration
+            else:
+                self.epsilon = 0.05  # Later cycles: minimal exploration only
 
-        # Apply decay only within the first `max_games` of each phase
+        # Apply decay within each phase
         if (game_number - phase_start) <= max_games:
-            epsilon_t = self.min_num + (self.epsilon_0 - self.min_num) * (1 - ((game_number-phase_start) / max_games)) ** self.alpha
+            if current_phase == 0:
+                # First cycle: decay from 0.3 to 0.0001
+                epsilon_t = self.min_num + (0.3 - self.min_num) * (1 - ((game_number-phase_start) / max_games)) ** self.alpha
+            else:
+                # Later cycles: decay from 0.05 to 0.0001
+                epsilon_t = self.min_num + (0.05 - self.min_num) * (1 - ((game_number-phase_start) / max_games)) ** self.alpha
             self.epsilon = max(0.0001, epsilon_t)
 
     def remember(self, state, next_state, reward, finished):

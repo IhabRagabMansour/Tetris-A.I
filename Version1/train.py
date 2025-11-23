@@ -9,7 +9,7 @@ STATES = 6
 HIDDEN_SIZES = [32,32,32]
 INPUT_CHANNELS = 1  # For CNN
 ACTIONS = 1
-MAX_MEMORY = 30000
+MAX_MEMORY = 100000  # Increased from 30000 to prevent good experiences from being overwritten
 BATCH_SIZE = 128
 EPOCHS = 2
 
