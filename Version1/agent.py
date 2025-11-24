@@ -1,16 +1,18 @@
 import random
 from prioritized_memory import PrioritizedMemory
-# from model import QTrainer, Linear_QNet
-from model import QTrainer, CNN_QNet  
+from model import QTrainer, Linear_QNet, CNN_QNet
 import numpy as np
 import torch
 import os
 
 
 class Agent:
-    def __init__(self, data):
+    def __init__(self, data, architecture="CNN"):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(f"Using device: {self.device}")
+        self.architecture = architecture
+        print(f"Using architecture: {self.architecture}")
+
         self.MAX_MEMORY = data[0]
         self.STATES = data[1]
         self.HIDDEN_AMOUNT = data[2]
@@ -23,10 +25,13 @@ class Agent:
         self.gamma = 0.999 # discount rate
         self.memory = PrioritizedMemory(self.MAX_MEMORY)
 
-        # self.model1 = Linear_QNet(self.STATES,self.HIDDEN_AMOUNT,self.ACTIONS) # primary network, evaluates best action
-        # self.model2 = Linear_QNet(self.STATES,self.HIDDEN_AMOUNT,self.ACTIONS) # target network,  evaluates best action's q value
-        self.model1 = CNN_QNet(output_size=self.ACTIONS)
-        self.model2 = CNN_QNet(output_size=self.ACTIONS)
+        # Initialize model based on architecture
+        if architecture == "Linear":
+            self.model1 = Linear_QNet(self.STATES, self.HIDDEN_AMOUNT, self.ACTIONS)
+            self.model2 = Linear_QNet(self.STATES, self.HIDDEN_AMOUNT, self.ACTIONS)
+        else:  # CNN
+            self.model1 = CNN_QNet(output_size=self.ACTIONS)
+            self.model2 = CNN_QNet(output_size=self.ACTIONS)
 
         self.model1.to(self.device)
         self.model2.to(self.device)
@@ -136,15 +141,17 @@ class Agent:
 
     def remember(self, state, next_state, reward, finished):
         # Get the Q-value for the current state from the primary model (for the action taken)
-        
-        # state_tensor = torch.tensor(state, dtype=torch.float32)
-        # next_state_tensor = torch.tensor(next_state, dtype=torch.float32)
 
-        # Add channel dimension for CNN
-        state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(self.device)
-        # Shape: (1, 1, 20, 10)
-        next_state_tensor = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(self.device)
-        # current_q_value = self.model1(state_tensor)
+        # Format tensors based on architecture
+        if self.architecture == "CNN":
+            # CNN: add channel dimension (1, 1, 20, 10)
+            state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(self.device)
+            next_state_tensor = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(self.device)
+        else:
+            # Linear: (1, 6)
+            state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(self.device)
+            next_state_tensor = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0).to(self.device)
+
         current_q_value = self.model1(state_tensor).squeeze().item()
 
         # # For non-terminal states, calculate the target Q-value:
@@ -214,15 +221,19 @@ class Agent:
         else:
             self.random = False
         
-        # Convert board states to tensor with shape (batch, 1, 20, 10)
-        state_boards = np.array(states, dtype=np.float32)
-        # Add channel dimension: (batch, 20, 10) -> (batch, 1, 20, 10)
-        state_boards = state_boards[:, np.newaxis, :, :]
-        state_tensors = torch.from_numpy(state_boards).to(self.device)
-        
+        # Format tensors based on architecture
+        if self.architecture == "CNN":
+            # CNN: (batch, 1, 20, 10)
+            state_boards = np.array(states, dtype=np.float32)
+            state_boards = state_boards[:, np.newaxis, :, :]
+            state_tensors = torch.from_numpy(state_boards).to(self.device)
+        else:
+            # Linear: (batch, 6)
+            state_tensors = torch.tensor(np.array(states), dtype=torch.float32).to(self.device)
+
         with torch.no_grad():
             q_values = self.model1(state_tensors)
-        
+
         self.q_values += [torch.max(q_values).item()]
         best_idx = torch.argmax(q_values).item()
         return best_idx  

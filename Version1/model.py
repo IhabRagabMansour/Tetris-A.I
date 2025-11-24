@@ -6,20 +6,20 @@ import numpy as np
 import os
 
 
-# class Linear_QNet(nn.Module):
-#     def __init__(self, input_size, hidden_sizes, output_size):
-#         super().__init__()
-#         self.layer1 = nn.Linear(input_size, hidden_sizes[0])
-#         self.layer2 = nn.Linear(hidden_sizes[0], hidden_sizes[1])
-#         self.layer3 = nn.Linear(hidden_sizes[1], hidden_sizes[2])
-#         self.output_layer = nn.Linear(hidden_sizes[2], output_size)
+class Linear_QNet(nn.Module):
+    def __init__(self, input_size, hidden_sizes, output_size):
+        super().__init__()
+        self.layer1 = nn.Linear(input_size, hidden_sizes[0])
+        self.layer2 = nn.Linear(hidden_sizes[0], hidden_sizes[1])
+        self.layer3 = nn.Linear(hidden_sizes[1], hidden_sizes[2])
+        self.output_layer = nn.Linear(hidden_sizes[2], output_size)
 
-#     def forward(self, x):
-#         x = f.relu(self.layer1(x))
-#         x = f.relu(self.layer2(x))
-#         x = f.relu(self.layer3(x))
-#         x = self.output_layer(x)
-#         return x
+    def forward(self, x):
+        x = f.relu(self.layer1(x))
+        x = f.relu(self.layer2(x))
+        x = f.relu(self.layer3(x))
+        x = self.output_layer(x)
+        return x
 
 class CNN_QNet(nn.Module):
     def __init__(self, output_size=1, input_channels=1):
@@ -57,6 +57,9 @@ class QTrainer:
         self.criterion = nn.SmoothL1Loss()
         self.q_values = []
 
+        # Detect if model is CNN or Linear
+        self.is_cnn = isinstance(model1, CNN_QNet)
+
     def update_lr(self, new_lr):
         for param_group in self.optimizer1.param_groups:
             param_group['lr'] = new_lr
@@ -93,10 +96,15 @@ class QTrainer:
 
         device = next(self.model1.parameters()).device
 
-        # Add channel dimension for CNN
-        state_batch = torch.tensor(np.array(states), dtype=torch.float32).unsqueeze(1).to(device)
-        # Shape: (batch, 1, 20, 10)
-        next_state_batch = torch.tensor(np.array(next_states), dtype=torch.float32).unsqueeze(1).to(device)
+        # Format tensors based on model type
+        if self.is_cnn:
+            # CNN expects: (batch, 1, 20, 10)
+            state_batch = torch.tensor(np.array(states), dtype=torch.float32).unsqueeze(1).to(device)
+            next_state_batch = torch.tensor(np.array(next_states), dtype=torch.float32).unsqueeze(1).to(device)
+        else:
+            # Linear expects: (batch, 6)
+            state_batch = torch.tensor(np.array(states), dtype=torch.float32).to(device)
+            next_state_batch = torch.tensor(np.array(next_states), dtype=torch.float32).to(device)
 
         reward_batch = torch.tensor(np.array(rewards), dtype=torch.float32).view(-1, 1).to(device)
         done_batch = torch.tensor(np.array(dones), dtype=torch.bool).to(device)

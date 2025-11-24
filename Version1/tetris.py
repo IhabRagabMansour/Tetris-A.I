@@ -9,8 +9,9 @@ from ai_board import AI_board
 
 
 class Tetris:
-    def __init__(self,i=1,SLOW_DROP=True):
+    def __init__(self,i=1,SLOW_DROP=True, architecture="CNN"):
         self.SLOW_DROP = SLOW_DROP
+        self.architecture = architecture
         self.set_window_position(i)
         pygame.init()
         if not RENDER:
@@ -21,7 +22,7 @@ class Tetris:
         pygame.display.set_caption('Tetris')
         self.games = 1
 
-        self.game = Game()
+        self.game = Game(architecture=self.architecture)
         if RENDER:
             self.scoreboard = Scoreboard()
             #self.preview = Preview()
@@ -50,7 +51,7 @@ class Tetris:
         os.environ['SDL_VIDEO_WINDOW_POS'] = f"{x},{y}"
 
     def reset(self):
-        self.game = Game()
+        self.game = Game(architecture=self.architecture)
         if RENDER:
             # self.scoreboard = Scoreboard()
             self.scoreboard.reset()

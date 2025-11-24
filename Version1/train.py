@@ -16,14 +16,15 @@ BATCH_SIZE = 128
 EPOCHS = 2
 
 class Training_Simulation:
-    def __init__(self, genome, i, generation, total_games, SLOW_DROP=True, resume_from=None, use_wandb=False):
+    def __init__(self, genome, i, generation, total_games, SLOW_DROP=True, resume_from=None, use_wandb=False, architecture="CNN"):
         self.generation = generation
         self.i = i
-        self.tetris = Tetris(i=i,SLOW_DROP=SLOW_DROP)
+        self.architecture = architecture
+        self.tetris = Tetris(i=i, SLOW_DROP=SLOW_DROP, architecture=architecture)
         self.weight = genome
         # self.data = [MAX_MEMORY, STATES, HIDDEN_SIZES, ACTIONS, BATCH_SIZE, LR, EPOCHS, total_games]
         self.data = [MAX_MEMORY, STATES, HIDDEN_SIZES, ACTIONS, BATCH_SIZE, LR, EPOCHS, total_games]
-        self.agent = Agent(self.data)
+        self.agent = Agent(self.data, architecture=architecture)
         self.use_wandb = use_wandb
 
         # Load checkpoint if resuming
@@ -313,7 +314,7 @@ def run_game(SLOW_DROP=True, games=10000, resume_from=None,
         print(f'Resuming from checkpoint: {resume_from}')
 
     start_time = time.time()
-    t = Training_Simulation(genome, 1, False, n, SLOW_DROP, resume_from=resume_from, use_wandb=use_wandb)
+    t = Training_Simulation(genome, 1, False, n, SLOW_DROP, resume_from=resume_from, use_wandb=use_wandb, architecture=architecture)
     total_lines, total_tetris = t.run_simulation(n)
     training_time = time.time() - start_time
 
