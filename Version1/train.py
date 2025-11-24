@@ -156,16 +156,22 @@ class Training_Simulation:
                 tetris.update_state(best_state, confidence, agent.random, agent.epsilon)
 
                 reward, done = tetris.play_full(best_action)
-                
+
                 # Track lines after playing
                 lines_removed = tetris.game.lines_removed
                 lines += lines_removed
                 if lines_removed == 4:
                     tetris_clears += 1
 
-                # FIX: Extract features from board for reward calculation
-                features = tetris.game.get_features_from_board(best_state, lines_removed)
-                reward += self.calculate_rewards(features)  # ← Use features, not best_state
+                # Extract features for reward calculation
+                if self.architecture == "CNN":
+                    # CNN: best_state is a board, extract features
+                    features = tetris.game.get_features_from_board(best_state, lines_removed)
+                else:
+                    # Linear: best_state is already features [total_heights, bumpiness, lines_removed, holes, y_pos, pillar]
+                    features = best_state
+
+                reward += self.calculate_rewards(features)
                 tetris.update_rewards(reward)
 
                 agent.remember(old_state, best_state, reward, done)
