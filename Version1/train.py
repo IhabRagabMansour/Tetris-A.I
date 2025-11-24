@@ -14,7 +14,7 @@ BATCH_SIZE = 128
 EPOCHS = 2
 
 class Training_Simulation:
-    def __init__(self, genome, i, generation, total_games, SLOW_DROP=True):
+    def __init__(self, genome, i, generation, total_games, SLOW_DROP=True, resume_from=None):
         self.generation = generation
         self.i = i
         self.tetris = Tetris(i=i,SLOW_DROP=SLOW_DROP)
@@ -22,6 +22,14 @@ class Training_Simulation:
         # self.data = [MAX_MEMORY, STATES, HIDDEN_SIZES, ACTIONS, BATCH_SIZE, LR, EPOCHS, total_games]
         self.data = [MAX_MEMORY, STATES, HIDDEN_SIZES, ACTIONS, BATCH_SIZE, LR, EPOCHS, total_games]
         self.agent = Agent(self.data)
+
+        # Load checkpoint if resuming
+        self.start_game = 1
+        if resume_from:
+            loaded_game = self.agent.load_model(resume_from)
+            self.start_game = loaded_game + 1
+            self.tetris.games = loaded_game
+            print(f"Resuming training from game {self.start_game}")
 
     def calculate_rewards(self,best_state):
         total_heights, bumpiness, lines_removed, holes, y_pos, pillar = best_state
@@ -89,8 +97,8 @@ class Training_Simulation:
         agent = self.agent
         score = lines = not_trained = 0
         tetris_clears = 0
-        count = 0
-        for game_number in range(1,n+1):
+        count = (self.start_game - 1) // 500  # Calculate checkpoint counter based on start game
+        for game_number in range(self.start_game, n+1):
             tetris.reset()
             done = trained = False
             old_state = tetris.game.get_state()
@@ -180,12 +188,12 @@ class Training_Simulation:
 
             if tetris.games%500==0:
                 count += 1
-                agent.save_model(count)
+                agent.save_model(count, tetris.games)
 
         # return tetris.scoreboard.hiscore, lines, tetris_clears
         return lines, tetris_clears
 
-def run_game(SLOW_DROP=True, games=10000):
+def run_game(SLOW_DROP=True, games=10000, resume_from=None):
     genome = {
         'game_over': 189.27613725914273,
         'survival_instinct': 8.388926084018738,
@@ -199,7 +207,9 @@ def run_game(SLOW_DROP=True, games=10000):
     }
     n = games
     print(f'Running simulation SLOW_DROP={SLOW_DROP}')
-    t = Training_Simulation(genome, 1, False,n,SLOW_DROP)
+    if resume_from:
+        print(f'Resuming from checkpoint: {resume_from}')
+    t = Training_Simulation(genome, 1, False, n, SLOW_DROP, resume_from=resume_from)
     t.run_simulation(n)
     return
 

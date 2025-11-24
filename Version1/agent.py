@@ -57,24 +57,58 @@ class Agent:
 
             # Load model weights
             self.model1.load_state_dict(checkpoint['model_state_dict'])
-            self.model2.load_state_dict(checkpoint['model_state_dict'])  # Target model sync
+
+            # Load target model if saved separately, otherwise sync from model1
+            if 'target_model_state_dict' in checkpoint:
+                self.model2.load_state_dict(checkpoint['target_model_state_dict'])
+            else:
+                self.model2.load_state_dict(checkpoint['model_state_dict'])
 
             # Load optimizer state
             self.trainer.optimizer1.load_state_dict(checkpoint['optimizer_state_dict'])
-            print(f'Model Loaded {model_path}')
+
+            # Load training state to prevent "forgetting"
+            if 'epsilon' in checkpoint:
+                self.epsilon = checkpoint['epsilon']
+                print(f"  Restored epsilon: {self.epsilon:.5f}")
+
+            if 'LR' in checkpoint:
+                self.LR = checkpoint['LR']
+                self.trainer.update_lr(self.LR)
+                print(f"  Restored learning rate: {self.LR:.4f}")
+
+            if 'total_steps' in checkpoint:
+                self.total_steps = checkpoint['total_steps']
+                print(f"  Restored total steps: {self.total_steps}")
+
+            # Return game_number so training can resume from correct point
+            game_number = checkpoint.get('game_number', 0)
+
+            print(f'Model Loaded: {model_path}')
+            if game_number > 0:
+                print(f'  Resume training from game {game_number + 1}')
+
+            return game_number
 
         else:
             print("No saved model found. Using a new model.")
+            return 0
 
-    def save_model(self, count):
+    def save_model(self, count, game_number=0):
         os.makedirs("model", exist_ok=True)
         checkpoint = {
-            'model_state_dict': self.model1.cpu().state_dict(),  # Move to CPU before saving
-            'optimizer_state_dict': self.trainer.optimizer1.state_dict()
+            'model_state_dict': self.model1.cpu().state_dict(),
+            'target_model_state_dict': self.model2.cpu().state_dict(),
+            'optimizer_state_dict': self.trainer.optimizer1.state_dict(),
+            'epsilon': self.epsilon,
+            'LR': self.LR,
+            'total_steps': self.total_steps,
+            'game_number': game_number
         }
         torch.save(checkpoint, f"model/trained_model_{count}.pth")
         self.model1.to(self.device)  # Move back to GPU
-        print("Model and optimizer saved successfully!")
+        self.model2.to(self.device)
+        print(f"Model saved successfully! (Game {game_number}, ε={self.epsilon:.5f}, LR={self.LR:.4f})")
 
     def calculate_lr(self, games_played: int, max_games: int = 10000, min_lr: float = 0.001, max_lr: float = 0.01):
         # Single smooth decay across entire training (no resets)
