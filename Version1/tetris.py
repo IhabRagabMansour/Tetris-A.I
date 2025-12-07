@@ -6,11 +6,14 @@ from game import Game
 from scoreboard import Scoreboard
 from preview import Preview
 from ai_board import AI_board
+from feature_panel import FeaturePanel
 
 
 class Tetris:
     def __init__(self,i=1,SLOW_DROP=True):
         self.SLOW_DROP = SLOW_DROP
+        # This branch uses Linear architecture only
+        self.architecture = "Linear"
         self.set_window_position(i)
         pygame.init()
         if not RENDER:
@@ -24,6 +27,9 @@ class Tetris:
         self.game = Game()
         if RENDER:
             self.scoreboard = Scoreboard()
+            # Only show feature panel for Linear architecture
+            if self.architecture == "Linear":
+                self.feature_panel = FeaturePanel()
             #self.preview = Preview()
             #self.ai_board = AI_board()
         self.reward = 0
@@ -143,12 +149,20 @@ class Tetris:
                 if event.type==pygame.QUIT:
                     pygame.quit()
                     exit()
+                # Toggle feature overlay with 'F' key (only for Linear architecture)
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_f:
+                    if self.architecture == "Linear":
+                        self.game.show_features = not self.game.show_features
+                        print(f"Feature overlay: {'ON' if self.game.show_features else 'OFF'}")
             self.display_surface.fill(GRAY)
 
         self.game.run()
 
         if RENDER:
             self.scoreboard.run(self.game, self.games, self.epsilon)
+            # Display feature panel if Linear architecture
+            if self.architecture == "Linear":
+                self.feature_panel.run(self.game)
             pygame.display.update()
 
         self.update_game_speed()

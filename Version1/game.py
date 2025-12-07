@@ -7,6 +7,11 @@ from njit_startup import *
 class Game:
     def __init__(self, player=False):
         self.player = player
+        # This branch uses Linear architecture only
+        self.architecture = "Linear"
+        # Feature visualization toggle
+        self.show_features = False
+
         # display
         self.surface = pygame.Surface((GAME_WIDTH,GAME_HEIGHT))
         self.display_surface = pygame.display.get_surface()
@@ -80,6 +85,82 @@ class Game:
         self.surface.blit(self.line_surface,(0,0))
         self.display_surface.blit(self.surface, (PADDING,PADDING))
         pygame.draw.rect(self.display_surface,LINE_COLOR,self.rect,2,2)
+
+        # Draw feature visualization overlays if enabled
+        if self.show_features and self.architecture == "Linear":
+            self._draw_feature_overlays()
+
+    def _draw_feature_overlays(self):
+        """Draw visual overlays showing Linear NN features on the game board"""
+        board = self._create_fake_board()
+        cols, total_heights, bumpiness = get_states_fast(board)
+
+        # Calculate holes
+        holes = np.sum((board == 0) & (np.cumsum(board != 0, axis=0) > 0))
+
+        # Check for pillars
+        pillar_cols = []
+        for i in range(1, len(cols)-1):
+            if cols[i-1] - cols[i] >= 3 and cols[i+1] - cols[i] >= 3:
+                pillar_cols.append(i)
+        if len(cols) > 1:
+            if cols[1] - cols[0] >= 3:
+                pillar_cols.append(0)
+            if cols[-2] - cols[-1] >= 3:
+                pillar_cols.append(len(cols)-1)
+
+        # Font for text
+        font = pygame.font.Font(None, 20)
+        small_font = pygame.font.Font(None, 16)
+
+        # 1. Draw column heights (numbers above each column)
+        for col_idx, height in enumerate(cols):
+            x_pos = PADDING + col_idx * CELL_SIZE + CELL_SIZE // 2
+            y_pos = PADDING - 10
+
+            # Color code: red for tall columns, green for short
+            color = (255, 100, 100) if height > 15 else (100, 255, 100) if height < 8 else (255, 255, 100)
+
+            text = font.render(str(int(height)), True, color)
+            text_rect = text.get_rect(center=(x_pos, y_pos))
+            self.display_surface.blit(text, text_rect)
+
+        # 2. Highlight holes (red circles)
+        for row in range(ROWS):
+            for col in range(COLUMNS):
+                # Check if this cell is a hole (empty with blocks above)
+                if board[row][col] == 0 and np.sum(board[:row, col]) > 0:
+                    x_pos = PADDING + col * CELL_SIZE + CELL_SIZE // 2
+                    y_pos = PADDING + row * CELL_SIZE + CELL_SIZE // 2
+                    pygame.draw.circle(self.display_surface, (255, 50, 50), (x_pos, y_pos), CELL_SIZE // 3, 2)
+
+        # 3. Draw bumpiness indicators (lines between columns showing height difference)
+        for col_idx in range(len(cols) - 1):
+            height_diff = abs(cols[col_idx] - cols[col_idx + 1])
+            if height_diff > 0:
+                x1 = PADDING + col_idx * CELL_SIZE + CELL_SIZE
+                x2 = PADDING + (col_idx + 1) * CELL_SIZE
+                y1 = PADDING + (ROWS - int(cols[col_idx])) * CELL_SIZE
+                y2 = PADDING + (ROWS - int(cols[col_idx + 1])) * CELL_SIZE
+
+                # Color based on height difference
+                color = (255, 100, 0) if height_diff >= 3 else (255, 200, 0)
+                pygame.draw.line(self.display_surface, color, (x1, y1), (x2, y2), 2)
+
+                # Draw height difference number
+                mid_x = (x1 + x2) // 2
+                mid_y = (y1 + y2) // 2
+                diff_text = small_font.render(str(int(height_diff)), True, (255, 255, 255))
+                diff_rect = diff_text.get_rect(center=(mid_x, mid_y))
+                self.display_surface.blit(diff_text, diff_rect)
+
+        # 4. Highlight pillar columns (dangerous spikes)
+        for col_idx in pillar_cols:
+            x_pos = PADDING + col_idx * CELL_SIZE
+            y_pos = PADDING
+            # Draw red rectangle around the column
+            pygame.draw.rect(self.display_surface, (255, 0, 0),
+                           (x_pos, y_pos, CELL_SIZE, GAME_HEIGHT), 3)
 
     def _create_fake_board(self):
         return (self.board != 0).astype(int)
